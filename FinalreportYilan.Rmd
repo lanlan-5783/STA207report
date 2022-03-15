@@ -1,0 +1,764 @@
+---
+title: "Impact of the Coronavirus Pandemic on Plans for Postsecondary Education from 2020 to 2022"
+author: "Yilan Ma ID:920255249 Team ID:12 "
+date: "3/13/2022"
+output: html_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE,message=FALSE,warning=FALSE)
+```
+
+```{r,message=FALSE}
+setwd("F:\\course\\STA207\\project")
+library(segmented)
+library(ppcor)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(ggpmisc)
+library(devtools)
+library(kableExtra)
+library(MASS)
+library(car)
+library(kableExtra)
+library(ggplot2)
+library(ggpubr)
+library(gplots)
+library(stats)
+library(car)
+library(AER)
+library(rstatix)
+library(ggcorrplot)
+library(car)
+library(psych)
+library(reshape2)
+library(MASS)
+library(klaR)
+library(devtools)
+library(outliers)
+library(ggforce)
+library(tidyverse)
+library(caret)
+library(SiZer)
+library(mctest)
+```
+
+# 1. Abstract 
+
+The outbreak of COVID-19 affected the lives of all sections of society as people were asked to self-quarantine in their homes to prevent the spread of the virus. 
+Its emergence brought major disruptions to American society. Therefore, it's highly necessary to study if the coronavirus pandemic's tendency will affect the students' study routine. This report, using data from [Household Pulse Survey (HPS)](https://www.census.gov/programs-surveys/household-pulse-survey/data.html#phase3.3),[1] and [WHO COVID-19 data](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports), a regression model is built. As a result, the model suggests the coronavirus pandemic does have a direct effect on people's plans for their postsecondary education in the USA. And we find it very weird that the impact of the Covid19 death rate is negative. That is to say, even though there's a high death rate for the coronavirus pandemic, people are less likely to cancel all plans to take classes this term, suggesting people seem to be not afraid of studying in a risky environment. We think the main reason for this situation is that as time goes by, people are less likely to be terrified by the Covid-19 death rate, which reflected in data is a negative relationship.
+
+<span style='color:red'>- Highlight </span>
+The highlight of this report is, by reorganizing and matching the time series data, this project managed to transform a time series into a much simpler continue data. Also, this report is the first one to find an approach to build a model for the survey table of the HPS education survey. This may be helpful for follow-up research.
+
+# 2. Introduction
+
+## 2.1 The coronavirus pandemic 
+
+The coronavirus pandemic broke out of sudden in spring 2020. Its emergence brought major disruptions to American society. The pandemic caused the health system stressed, millions of jobs got lost, thousands of businesses shuttered, and many public schools got closed. It can be said with no exaggeration that the coronavirus pandemic changes every American's life. Many research is conducted based on the pandemic, yet still many questions are waiting to be answered in terms of its affection, its tendency and the correct solution towards it.
+
+## 2.2 The change of people's plan on their postsecondary education 
+
+Many pieces of research have discussed the coronavirus pandemic's impact on elementary and secondary education, therefore, the pandemic is very likely to have a direct impact on post-secondary education as well. Since spring 2020, many postsecondary institutions decided to shift from in-person classes to online-only classes, including the University of California, Davis. 
+
+It's generally natural to assume that the coronavirus pandemic surely affected the people's plan on their postsecondary education. However, we cannot easily distinguish does this affection comes from its impact on economics or the unemployment rate or comes from the pandemic itself. After all, the Covid-19 pandemic literally changed the whole society, making measuring the impact of the coronavirus pandemic is a necessary but difficult job since the effect was everywhere and very hard to be concluded in a specific number. 
+
+Inspired by Kunal Chaturvedi’s work: COVID-19 and its impact on education, social life and mental health of students: A survey,[3] who claimed that due to COVID: 13% of students delayed graduation, 40% lost a job, internship, or offer, and 29% expect to earn less at 35. we use data from the [Household Pulse Survey (HPS)](https://www.census.gov/programs-surveys/household-pulse-survey/data.html#phase3.3),[1] and [WHO COVID-19 data](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports), this report manages to find a statistical way to measure the influence of the coronavirus pandemic towards people's plans on their postsecondary education in the US and try to answer the question of how much the postsecondary education is affected by the coronavirus pandemic. 
+
+# 3. Questions of interest
+
+- The primary question of interest is whether or not the coronavirus pandemic will change people's plans on their postsecondary education in the USA.
+- If the answer is yes, how much impact can be explained directly by the coronavirus pandemic? If the answer is no, then why the postsecondary education is not directly affected like elementary and secondary education?
+
+# 4. Descriptive Analysis
+
+## 4.1 WHO COVID-19 Data and CDC vaccination Data
+
+The [WHO COVID-19 Data](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports) is a data provided by the World Health Organization (WHO), aiming to provides an overview of the global, regional and country-level COVID-19 cases and deaths, highlighting key data and trends; as well as other pertinent epidemiological information concerning the COVID-19 pandemic. The vaccination data is from the Centers for Disease Control and Prevention (CDC) [COVID-19 Vaccination Trends in the United States, National and Jurisdictional](https://data.cdc.gov/Vaccinations/COVID-19-Vaccination-Trends-in-the-United-States-N/rh2h-3yt2). This dataset gives an overall trend in the Number of COVID-19 Vaccinations in the US at national and jurisdictional levels. Data represents all vaccine partners including jurisdictional partner clinics, retail pharmacies, long-term care facilities, dialysis centers, Federal Emergency Management Agency and Health Resources and Services Administration partner sites, and federal entity facilities. Here we only use one variable from the dataset as the vaccination rate, that is the 7 day average of the daily doses administered number.
+
+Due to the practical problem, the formal record of the Covid-19 vaccination data from CDC can only be as early as 12-13-2020. The red broken lines in the plots also show that. It means that it almost takes a year to finally have a vaccine for the Covid-19. Still, this is a very important index to measure the impacts of Covid-19.
+
+We first draw a few plots to show the features of Covid-19 tendency from 3/23/2020 to 2/7/2022, which is 682 calendar days in total (the gap in between the surveys will be reduced later). 
+
+*Plot 1*
+
+```{r,include=T}
+setwd("F:\\course\\STA207\\project")
+covid <- read_csv("https://covid19.who.int/WHO-COVID-19-global-data.csv")
+covid_us = covid[which(covid$Country_code=="US"),]
+vaccindata = read.csv("data\\va.csv")
+vaccindata$Date = as.Date(vaccindata$Date,"%m/%d/%y")
+#From 8/19/2020-2/7/2022
+coviddata = covid_us[81:767,c(1,5:8)]
+gg1 = ggplot(data = coviddata) +
+  geom_line(aes(y = New_cases,x = Date_reported), 
+            color = "#09557f",
+            alpha = 0.6,
+            size = 0.6) +
+  labs(y = "Covid New_cases",
+       x = "Date",
+       title = "Covid New_cases 3/23/2020-2/7/2022") +
+  scale_x_date(date_breaks = "3 months" , date_labels = "%b-%y")+
+  theme_classic()+
+  annotate(geom="text", x=as.Date("2020-12-13","%Y-%m-%d"), y=10^6, label="The Vaccination records starts at 2020-012-13",color="black",size = 2.5)+
+  geom_vline(xintercept=as.Date("2020-12-13","%Y-%m-%d"),
+                linetype=4, colour="red")+
+  annotate(geom="text", x=as.Date("2020-08-19","%Y-%m-%d"), y=9^6, label="The survey starts at 2020-08-19",color="black",size = 2.5)+
+  geom_vline(xintercept=as.Date("2020-08-19","%Y-%m-%d"),
+                linetype=1, colour="red")
+gg2 = ggplot(data = coviddata) +
+  geom_line(aes(y = New_deaths,x = Date_reported), 
+            color = "#09557f",
+            alpha = 0.6,
+            size = 0.6) +
+  labs(y = "New_deaths",
+       x = "Date",
+       title = "New_deaths") +
+  geom_vline(xintercept=as.Date("2020-12-13","%Y-%m-%d"),
+                linetype=4, colour="red")+
+  scale_x_date(date_breaks = "3 months" , date_labels = "%b-%y")+
+  theme_classic()+
+  geom_vline(xintercept=as.Date("2020-12-13","%Y-%m-%d"),
+                linetype=4, colour="red")+
+  geom_vline(xintercept=as.Date("2020-08-19","%Y-%m-%d"),
+                linetype=1, colour="red")
+gg3 = ggplot(data = coviddata) +
+  geom_line(aes(y = New_deaths/New_cases,x = Date_reported), 
+            color = "#09557f",
+            alpha = 0.6,
+            size = 0.6) +
+  labs(y = "case-mortality rate",
+       x = "Date",
+       title = "case-mortality rate") +
+  geom_vline(xintercept=as.Date("2020-12-13","%Y-%m-%d"),
+                linetype=4, colour="red")+
+  scale_x_date(date_breaks = "3 months" , date_labels = "%b-%y")+
+  theme_classic()+
+  geom_vline(xintercept=as.Date("2020-12-13","%Y-%m-%d"),
+                linetype=4, colour="red")+
+  geom_vline(xintercept=as.Date("2020-08-19","%Y-%m-%d"),
+                linetype=1, colour="red")
+gg4 = ggplot(data = vaccindata) +
+  geom_line(aes(y = X7_Day_Rolling_Average,x = Date), 
+            color = "#09557f",
+            alpha = 0.6,
+            size = 0.6) +
+  labs(y = "average doses",
+       title = "vaccination rate",size = 2.5) +
+  scale_x_date(date_breaks = "2 months" , date_labels = "%b-%y")+
+  theme_classic()
+gridExtra::grid.arrange(gg1,gg2,gg3,gg4,nrow=4)
+
+edu_data = read.csv("data\\summary.csv")
+new_data = read.csv("data\\new.csv")
+```
+
+The *Plot 1* shows that the `New_cases` is rather stable for one and a half years until the beginning of 2022 when there was a sudden outbreak of the coronavirus pandemic. This makes the peak of the `New_cases`. 
+
+The `New_deaths` has approximately 3 peaks. The first peak is in spring 2020, which is the beginning of the coronavirus pandemic. The second peak which is also the largest peak occurs in the winter of 2020. The third peak begins approximately in September 2021 and is still arsing till 2/7/2020.
+
+The `case-mortality` is generally decreasing. There is a very high case mortality rate at the beginning of the coronavirus pandemic when both the government and people were unprepared for this sudden disruption. The medical system was stressed out, and people were very horrified. After that period, the `case-mortality` keeps curly decreasing.
+
+The `average vaccination number` reaches its peak in the middle of 2021 and gradually comes to a lower stable level. There is also a small peak in winter 2021.
+
+Now we want to obtain some summary statistics about the data. 
+
+*Table 1: Summary statistics of the WHO Covid-19 data*
+```{r}
+sumcovid = data.frame(coviddata[,-1],Deathrate = coviddata$New_deaths/coviddata$New_cases)
+kable(summary(sumcovid), "html",align=rep('c', 5)) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+#New_deaths_plot = ggplot(sumcovid) + geom_boxplot()+theme_classic() +ggtitle("Boxplot for school1")
+```
+
+According to *Table 1*, it can be learned that for these 687 days, averagely speaking, there are 110374 new cases and 1308 deaths cases EVERY SINGLE DAY. It's a very crazy number and again it proves the power of the coronavirus pandemic. 
+
+## 4.2 Household Pulse Survey (HPS) Data
+
+The [Household Pulse Survey (HPS)](https://www.census.gov/programs-surveys/household-pulse-survey/data.html#phase3.3) data is an experimental survey that designed to quickly and efficiently deploy data collected on how people’s lives have been impacted by the coronavirus pandemic.
+
+As it's mentioned, Household Pulse Survey Data is experimental data whose content and sample size vary for each survey. What's more, the survey allows multiple choices, which makes it even more unclear to specify and explain a certain kind. *Table 2* lists all the variables included in the survey. Remember that our goal is to measure the impact of the Covid-19 pandemic has people's plans on their postsecondary education, And here we make a crucial decision:
+
+we assume **x1:All plans to take classes this term have been canceled** is the exact response variable. There is a reason for this: even though there are seven measurements, the other six variables are either irrelevant or uncompleted. This is the most direct variable that can answer our question of interest.
+
+As the survey itself is complicated, an example of the original survey table can be found in the [Example of survey table](https://docs.google.com/spreadsheets/d/1Rs_SeGz9H-nvS0hi4iIPD0NOJ7YfmP2uuXZNmUblqTk/edit?usp=sharing).
+
+Some important variables and indicators are extracted from the survey tables in *Table 2*.
+
+*Table 2: Introduction of each variable*
+```{r}
+#Only analyze the data from 7/21/2021-2/7/2022
+covid_us_raw = covid_us[566:767,]
+####data vidualization 
+c1 = ggplot(data = covid_us_raw) +
+  geom_line(aes(y = New_cases,x = Date_reported), 
+            color = "#09557f",
+            alpha = 0.6,
+            size = 0.6) +
+  labs(x = "Date", 
+       y = "Covid New_cases",
+       title = "") +
+  scale_x_date(date_breaks = "months" , date_labels = "%b-%y")+
+  theme_minimal()
+c2 = ggplot(data = covid_us_raw) +
+  geom_line(aes(y = New_deaths,x = Date_reported), 
+            color = "#09557f",
+            alpha = 0.6,
+            size = 0.6) +
+  labs(x = "Date", 
+       y = "Covid New_deaths",
+       title = "") +
+  scale_x_date(date_breaks = "months" , date_labels = "%b-%y")+
+  theme_minimal()
+survey1 = read.csv("data\\d1.csv",header = T)
+survey2 = read.csv("data\\d2.csv",header = T)
+survey3 = read.csv("data\\d3.csv",header = T)
+survey4 = read.csv("data\\d4.csv",header = T)
+survey5 = read.csv("data\\d5.csv",header = T)
+survey6 = read.csv("data\\d6.csv",header = T)
+survey7 = read.csv("data\\d7.csv",header = T)
+survey8 = read.csv("data\\d8.csv",header = T)
+survey9 = read.csv("data\\d9.csv",header = T)
+Reason_for_changing_educational_plans = c("r1: Had coronavirus or had concerns about contracting coronavirus",
+           "r2: Caring for someone with coronavirus",
+           "r3: Caring for others whose care arrangements are disrupted",
+           "r4: Institution changed content or format of classes",
+           "r5: Changes to financial aid",
+           "r6: Changes to campus life",
+           "r7: Uncertainty about how classes/program might change",
+           "r8: Not able to pay for classes/educational expenses because of changes to income from the pandemic",
+           "r9: Some other reason related to the pandemic")
+Plan_changed = c("x1:Plans to take classes this fall have not changed",
+                 "x2:All plans to take classes this fall have been canceled",
+         "x3:Classes are in different formats this term",
+         "x4:Fewer classes will be taken this term",
+         "x5:More classes are being taken this term",
+         "x6:Classes will be taken from a different institution",
+         "x7:Classes will be taken for a different kind of certificate or degree")
+colnames(survey1) = c("reason","totall","x1","x2","x3","x4","x5","x6","x7")
+colnames(survey2) = c("reason","totall","x1","x2","x3","x4","x5","x6","x7")
+colnames(survey3) = c("reason","totall","x1","x2","x3","x4","x5","x6","x7")
+colnames(survey4) = c("reason","totall","x1","x2","x3","x4","x5","x6","x7")
+colnames(survey5) = c("reason","totall","x1","x2","x3","x4","x5","x6","x7")
+colnames(survey6) = c("reason","totall","x1","x2","x3","x4","x5","x6","x7")
+colnames(survey7) = c("reason","totall","x1","x2","x3","x4","x5","x6","x7")
+colnames(survey8) = c("reason","totall","x1","x2","x3","x4","x5","x6","x7")
+colnames(survey9) = c("reason","totall","x1","x2","x3","x4","x5","x6","x7")
+rownames(survey1) = c("totall","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+rownames(survey2) = c("totall","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+rownames(survey3) = c("totall","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+rownames(survey4) = c("totall","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+rownames(survey5) = c("totall","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+rownames(survey6) = c("totall","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+rownames(survey7) = c("totall","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+rownames(survey8) = c("totall","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+rownames(survey9) = c("totall","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+data1 = survey1[-1,-9]
+data1 = data1[-10,-1]
+d1 = data.frame(data1,group=rep(1,nrow(data1)))
+data2 = survey2[-1,-9]
+data2 = data2[-10,-1]
+d2 = data.frame(data2,group=rep(2,nrow(data1)))
+data3 = survey3[-1,-9]
+data3 = data3[-10,-1]
+d3 = data.frame(data3,group=rep(3,nrow(data1)))
+data4 = survey4[-1,-9]
+data4 = data4[-10,-1]
+d4 = data.frame(data4,group=rep(4,nrow(data1)))
+data5 = survey5[-1,-9]
+data5 = data5[-10,-1]
+d5 = data.frame(data5,group=rep(5,nrow(data1)))
+data6 = survey6[-1,-9]
+data6 = data6[-10,-1]
+d6 = data.frame(data6,group=rep(6,nrow(data1)))
+data7 = survey7[-1,-9]
+data7 = data7[-10,-1]
+d7 = data.frame(data7,group=rep(7,nrow(data1)))
+data8 = survey8[-1,-9]
+data8 = data8[-10,-1]
+d8 = data.frame(data8,group=rep(8,nrow(data1)))
+data9 = survey9[-1,-9]
+data9 = data9[-10,-1]
+d9 = data.frame(data9,group=rep(9,nrow(data1)))
+Reason_for_changing_educational_plans = data.frame(Reason_for_changing_educational_plans)
+Plan_changed = data.frame(Plan_changed)
+knitr::kable(Reason_for_changing_educational_plans,align=rep('l', 5))%>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+kable(Plan_changed, "html",align=rep('l', 5)) %>%
+  row_spec(1, bold = T)%>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+$\textbf{Time line for surveys}$
+
+There are 42 surveys conducted from 3/27/2020 to 2/7/2022, 6 Phrase in total, including Phrase1, 2, 3 and Phrase 3.1, Phrase 3.2, and Phrase 3.3. The questionnaires of the survey can be seen [here](https://www2.census.gov/programs-surveys/demo/technical-documentation/hhp/Phase_3-2_Household_Pulse_Survey_FINAL_English_SKIPS_081821.pdf).
+
+The time line for surveys is somehow irregular.
+
+Data collection for Phase 1 of the Household Pulse Survey began on April 23, 2020 and ended on July 21, 2020.
+
+Data collection for Phase 2 of the Household Pulse Survey began on August 19, 2020 and ended October 26, 2020.
+
+Data collection for Phase 3 of the Household Pulse Survey began on October 28, 2020 and ended March 29, 2021.
+
+Data collection for Phase 3.1 of the Household Pulse Survey began on April 14 and ended on July 5, 2021. 
+
+Data collection for Phase 3.2 of the Household Pulse Survey began July 21, 2021 and ended on October 11, 2021.
+
+Data collection for Phase 3.3 of the Household Pulse Survey started on December 1, 2021 and is scheduled to continue until February 7, 2022. Although previous phases of the survey collected and disseminated data every two weeks, Phase 3.3 has shifted to a two-week on, two-weeks off collection and dissemination approach.
+
+$\textbf{Note}$: Phase 1 of the Household Pulse Survey was collected and disseminated weekly. All later phases of the survey have used two-week collection and dissemination periods. And the format of the survey is different from the following Phase. Therefore, we only use the data from Phase 2, Phase 3, Phase 3.1, Phase 3.2, and Phase 3.3 for this report. Despite going to a two-week collection period, the Household Pulse Survey continues to call these collection periods "weeks" to maintain continuity. Phase 3.3 maintains the two-week collection periods, but unlike previous phases, with the two-weeks on, two-weeks off collection approach, there will be three data collection and dissemination cycles, instead of six. 
+
+$\textbf{Change time series data to panel data}$
+
+Due to the characteristics of the HPS data, if we want to study the relationship between the coronavirus pandemic and postsecondary education, it's necessary to match the coronavirus pandemic to the existing HPS data. As a result, we have to change our time-series data of Covid-19 into panel data, which means that instead of analyzing 687 days, we are accordingly analyzing 30 times averaged data.  
+To better illustrate how we make the change, the following plot is the times series plot of the Covid-19's death rate in two years. 
+
+Our adopted HPS data starts from 8-19-2020. Also note that due to the sudden breakout of the coronavirus pandemic, the data for it presents a rapid increasing tendency that's very unpredictable and unstable. Therefore, it's not a wise choice to use the early data of the Covid-19 unless we have a valid theoretical basis.
+
+Due to the practical problem, the formal record of the Covid-19 vaccination data from CDC can only be as early as 12-13-2020. Unfortunately, it does not match very well with our HPS data, but we will see if we can use it as a predictor for further analysis. 
+
+The gray line in the plot suggests each cycle of the survey which is taken every 2 days and lasts for 2 weeks. The gap in between each survey cycle is the Phrase gap of the survey. There are 5 Phrases in total, and the rest days within each gap are not the same. The longest gap happens between October 11, 2021, and December 1, 2021, which is marked in the plot.
+
+As a result, we transform our time series data into n=30 panel data, within each cycle, we take the average of the features for further analysis. For example, for the death rate within this 30 survey, we have:
+
+$$d^* = \frac{\sum^m_{i=1}(d_i)}{m}$$
+The $d_i$ is the death rate for each day, $m$ is the total days for each survey circle. $d^*$ is the new averaged death rate for each survey.
+
+*Plot 2*
+
+```{r}
+ggplot(data = coviddata) +
+  geom_line(aes(y = New_deaths/New_cases,x = Date_reported), 
+            color = "#09557f",
+            alpha = 0.6,
+            size = 0.6) +
+  labs(y = "case-mortality rate",
+       x = "Date",
+       title = "Divided case-mortality rate across time ") +
+  scale_x_date(date_breaks = "3 months" , date_labels = "%b-%y")+
+  geom_vline(xintercept=as.numeric(coviddata$Date_reported[c(150,162,164,176,178,190,192,204,206,218,220,232,234,246,248,260,262,274,276,288,290,302,304,316,318,330,332,344,334,346,360,372,388,400,402,414,416,428,430,442,444,456,458,470,486,498,500,512,514,526,528,540,542,554,556,568,619,631,647,659,675,687)]),
+                linetype=4, colour="gray")+
+  geom_vline(xintercept=as.numeric(coviddata$Date_reported[150]),
+                linetype=1, colour="red")+
+  annotate(geom="text", x=as.Date("2020-08-19","%Y-%m-%d"), y=0.12, label="The survey starts at 2020-08-19",color="#4169E1",size = 3)+
+  annotate(geom="text", x=as.Date("2020-12-13","%Y-%m-%d"), y=0.10, label="The Vaccination records starts at 2020-012-13",color="#4169E1",size = 3)+
+  geom_vline(xintercept=as.Date("2020-12-13","%Y-%m-%d"),
+                linetype=1, colour="red")+
+  annotate(geom="text", x=as.Date("2021-11-11","%Y-%m-%d"), y=0.03, label="There is a gap in survey due to Chrismas",color="seagreen",size = 3)+
+  annotate(geom="text", x=as.Date("2020-6-11","%Y-%m-%d"), y=0.03, label="The sudden breakout of the Covid-19 ",color="blueviolet",size = 3)+
+  theme_classic()
+```
+
+
+```{r}
+s1 = coviddata[1:44,]
+a1 = colMeans(s1[,c(2,4)])
+s2 = coviddata[46:51,]
+a2 = colMeans(s2[,c(2,4)])
+s3 = coviddata[53:58,]
+a3 = colMeans(s3[,c(2,4)])
+s4 = coviddata[60:65,]
+a4 = colMeans(s4[,c(2,4)])
+s5 = coviddata[67:72,]
+a5 = colMeans(s5[,c(2,4)])
+s6 = coviddata[81:86,]
+a6 = colMeans(s6[,c(2,4)])
+s7 = coviddata[88:93,]
+a7 = colMeans(s7[,c(2,4)])
+s8 = coviddata[95:100,]
+a8 = colMeans(s8[,c(2,4)])
+s9 = coviddata[102:107,]
+a9 = colMeans(s9[,c(2,4)])
+s10 = coviddata[109:114,]
+a10 = colMeans(s10[,c(2,4)])
+s11 = coviddata[116:121,]
+a11 = colMeans(s11[,c(2,4)])
+s12 = coviddata[150:162,]
+a12 = colMeans(s12[,c(2,4)])
+s13 = coviddata[164:176,]
+a5 = colMeans(s13[,c(2,4)])
+s14 = coviddata[178:190,]
+a14 = colMeans(s14[,c(2,4)])
+s15 = coviddata[192:204,]
+a15 = colMeans(s15[,c(2,4)])
+s16 = coviddata[206:218,]
+a16 = colMeans(s16[,c(2,4)])
+s17 = coviddata[220:232,]
+a17 = colMeans(s17[,c(2,4)])
+s18 = coviddata[234:246,]
+a18 = colMeans(s18[,c(2,4)])
+s19 = coviddata[248:260,]
+a19 = colMeans(s19[,c(2,4)])
+s20 = coviddata[262:274,]
+a20 = colMeans(s20[,c(2,4)])
+s21 = coviddata[276:288,]
+a21 = colMeans(s21[,c(2,4)])
+s22 = coviddata[290:302,]
+a22 = colMeans(s22[,c(2,4)])
+s23 = coviddata[304:316,]
+a23 = colMeans(s23[,c(2,4)])
+s24 = coviddata[318:330,]
+a24 = colMeans(s24[,c(2,4)])
+s25 = coviddata[332:344,]
+a25 = colMeans(s25[,c(2,4)])
+s26 = coviddata[334:346,]
+a26 = colMeans(s26[,c(2,4)])
+s27 = coviddata[360:372,]
+a27 = colMeans(s27[,c(2,4)])
+s28 = coviddata[388:400,]
+a28 = colMeans(s28[,c(2,4)])
+s29 = coviddata[402:414,]
+a29 = colMeans(s29[,c(2,4)])
+s30 = coviddata[416:428,]
+a30 = colMeans(s30[,c(2,4)])
+s31 = coviddata[430:442,]
+a31 = colMeans(s31[,c(2,4)])
+s32 = coviddata[444:456,]
+a32 = colMeans(s32[,c(2,4)])
+s33 = coviddata[458:470,]
+a33 = colMeans(s33[,c(2,4)])
+s34 = coviddata[486:498,]
+a34 = colMeans(s34[,c(2,4)])
+s35 = coviddata[500:512,]
+a35 = colMeans(s35[,c(2,4)])
+s36 = coviddata[514:526,]
+a36 = colMeans(s36[,c(2,4)])
+s37 = coviddata[528:540,]
+a37 = colMeans(s37[,c(2,4)])
+s38 = coviddata[542:554,]
+av = colMeans(s38[,c(2,4)])
+s39 = coviddata[556:568,]
+a39 = colMeans(s39[,c(2,4)])
+s40 = coviddata[619:631,]
+a40 = colMeans(s40[,c(2,4)])
+s41 = coviddata[647:659,]
+a41 = colMeans(s41[,c(2,4)])
+s42 = coviddata[675:687,]
+a42 = colMeans(s42[,c(2,4)])
+#get the grouped data
+groupdata = data.frame(new_data,rbind(colMeans(s13[,c(2,4)]),colMeans(s14[,c(2,4)]),colMeans(s15[,c(2,4)]),colMeans(s16[,c(2,4)]),colMeans(s17[,c(2,4)]),colMeans(s18[,c(2,4)]),colMeans(s19[,c(2,4)]),colMeans(s20[,c(2,4)]),colMeans(s21[,c(2,4)]),colMeans(s22[,c(2,4)]),colMeans(s23[,c(2,4)]),colMeans(s24[,c(2,4)]),colMeans(s25[,c(2,4)]),colMeans(s26[,c(2,4)]),colMeans(s27[,c(2,4)]),colMeans(s28[,c(2,4)]),colMeans(s29[,c(2,4)]),colMeans(s30[,c(2,4)]),colMeans(s31[,c(2,4)]),colMeans(s32[,c(2,4)]),colMeans(s33[,c(2,4)]),colMeans(s34[,c(2,4)]),colMeans(s35[,c(2,4)]),colMeans(s36[,c(2,4)]),colMeans(s37[,c(2,4)]),colMeans(s38[,c(2,4)]),colMeans(s39[,c(2,4)]),colMeans(s40[,c(2,4)]),colMeans(s41[,c(2,4)]),colMeans(s42[,c(2,4)])))
+
+
+```
+
+# 5. Inferential analysis
+
+## 5.1 Data for analysis
+
+In order to find a measurable way to establish a statistical model and reach the conclusion, it's very important to choose a valid response variable. From *Table 2* we can see that there are various possible factors. However, the key point here is to find a best variable that can represent the impact of the coronavirus pandemic on plans for postsecondary education most. And because the total number participate in each survey is not equal, it's natural to use a ratio.
+
+Based on the above discussion, we have:
+
+$$n_{total\ vaild\ survey} =n_{ total\ survey} - n_{Did\ not\ report}$$ 
+$$ K=x1$$
+$$Y = K/n_{total\ vaild\ survey}$$
+Thus, we can calculate our response variable `Y` by calculating the ratio of `x1` and the total number of valid surveys minus people who did not respond. 
+
+$\textbf{The dataset:}$
+
+**Y** is the ratio of the x1:All plans to take classes this term have been canceled` divided by a total number of valid surveys, which is calculated by total surveys minus those did not report. This is our response variable.
+
+**x1** is the non-response rate. It is a ratio of the total number of people who did not respond to this survey divided by a total number of surveys. We add this variable and think it might be related to **Y**. Because it is documented in the [HPS Technical Documentation](https://www2.census.gov/programs-surveys/demo/technical-documentation/hhp/Phase3-3_Source_and_Accuracy_Week42.pdf) that the nonresponse rate is related to some result of the data.
+
+**x2** is the Cant-afford rate. It is a ratio of the r8:Not able to pay for classes/educational expenses because of changes to income from the pandemic divided by a total number of valid surveys.
+
+**x3** is the Change of campus rate. It is a ratio of the r6: Changes to campus life divided by a total number of valid surveys.
+
+**x4** is the death rate. It is the ratio of a daily increasing number of new cases of the coronavirus pandemic divided by a daily increasing number of new deaths caused by the coronavirus pandemic. It is also known as the case-mortality rate. This is a very powerful index to show how serious is the coronavirus pandemic. 
+
+**x5** is the vaccination number. It the averaged vaccination number across the USA accordingly with the HPS survey cycle. The earliest vaccination record is December 13, 2020. So **x5** only contains 22 data points.
+
+So far, we've introduced all variables involved in the following model. 
+
+```{r}
+fulldata = data.frame(groupdata,x4 = groupdata$New_deaths/groupdata$New_cases)
+fulldata = fulldata[,c(1:4,7)]
+va = read.csv("data\\vaccinationsurvey.csv")
+fulldata2 = data.frame(fulldata[9:30,],va)
+```
+
+$\textbf{Overview: Pairwaise plot}$
+
+*Plot 3*
+
+```{r}
+
+pairs.panels(fulldata2[,], 
+             method = "pearson", 
+             hist.col = "#00AFBB", 
+             density = FALSE,  
+             ellipses = F, 
+             smooth = T, 
+             #bg=c("green","blue","pink")[factor(data$SCHOOL)], 
+             pch=21, 
+             main="Pairwise scatter plot data "
+)
+```
+
+This overview pairwise plot tells us a lot of information. With the smooth line in the left corner of the plot, we can see that except for x1, our response variable indeed seems to have a linear relationship with other variables. Besides, the red smooth line also suggests that there seems to have a "broken point" in the middle of the cases. We should pay particular attention to this phenomenon. 
+
+
+$\textbf{Correlation and heatmap:}$
+
+The pairwise plot also indicates that `x1` and `x2` have a rather high correlation, let's draw a correlation heatmap to check the correlation across all variables. 
+
+*Plot 4*
+
+```{r}
+cor_data = cor(fulldata2)
+ggcorrplot(cor_data,title = "The correlation heatmap across all population",
+              type = "lower",lab = T,outline.color = "white",
+           ggtheme = ggplot2::theme_void())
+```
+
+With $R^2$ respects to 0.78, it's true that `x1` and `x2` are highly correlated. However, for the complicity of the model, let's first leave it there and later to analyze if we need to adjust it.
+
+## 5.2 Regression Model 
+
+$\textbf{Model1(main model):}$
+
+Define a regression model as follows:
+
+$$Y_{i} =\beta_0+\beta_{1}X_{1i}+\beta_{2}X_{2i}+\beta_{3}X_{3i}+ \beta_{4}X_{4i}+\epsilon_{i} \quad \quad i = 1,2...n$$
+
+$\textbf{Explanation of the notation}$
+
+$Y_{i}$ is is the `Rate of all plans to take classes this term have been canceled`. $0\le Y_{i}\le1$. 
+
+$\beta_{0}$ is the intercept term.
+
+$\beta_{1}, \beta_{2}, \beta_{3},\ and\ \beta_{4}$ are the regression coefficients, representing that how much impact does the coronavirus pandemic have on `affected rate`, which is $Y_{i}$.
+
+$X_{1i}$ is the `non-response rate`, it is the rate of the did not response people/total numbers of people.
+
+$X_{2i}$ is the `Cant-afford rate`, it is the rate of the people who were unable to afford further education.
+
+$X_{3i}$ is the `Change of campus`rate. It is the rate of the people who cancel their plan because of the changes to campus life.
+
+$X_{4i}$ represents the averaged `deathrate` in each survey, which is calculated accordingly by `New_deaths/New_cases`.
+
+$\epsilon_{i}$ is the random error term. 
+
+$n=30$ is the sample size, which is also the total number of surveys from HPS data in Phrase 2, Phrase 3, Phrase 3.1, Phrase 3.2, Phrase 3.3.
+
+$\textbf{Assumption}$: The model errors are assumed to be identically and independently distributed from a normal distribution with zero mean and equal variance. 
+
+$\textbf{Summary of the model results:}$
+
+```{r}
+fit1 = lm(y~.,data = fulldata)
+fit2 = lm(y~.,fulldata2)
+#summary(fit1)
+#summary(fit2)
+```
+*Table 3: summary of the regression model1*
+
+| **Coefficients:** |          |            |         |            |
+|:-----------------:|:--------:|:----------:|:-------:|:----------:|
+|                   | Estimate | Std. Error | t value | Pr(>\|t\|) |
+|   _(Intercept)_   |  0.40697 |   0.09006  |  4.519  |  0.00013   |
+|        _x1_       | -0.06171 |   0.01322  | -4.668  |   10^-05   |
+|        _x2_       |  0.39291 |   0.14639  |  2.684  |  0.01272   |
+|        _x3_       | -0.99357 |   0.41363  |  -2.402 |  0.02406   |
+|        _x4_       | -1.86719 |   0.68709  |  -2.718 |  0.01177   |
+
+
+So our model1 is 
+
+$$Y_{i} =0.40697-0.06171X_{1i}+0.39291X_{2i}-0.99357X_{3i}-1.86719X_{4i}+\epsilon_{i} \quad \quad i = 1,2...n$$
+
+### 5.2.3 Hypotheses testing 1
+
+$\textbf{F-test:}$
+
+$$H_0: \beta_{1}=\beta_{2}=\beta_{3}=\beta_{4}=0\quad \quad H_a: Not\ all\ \beta_{i}\ are\ zero$$
+
+$F-statistics = 34.29 > F(\alpha = 0.05,4,25)$, thus we can reject the null hypothesis and say that not all of the $\beta_i$ are zero at significant level $\alpha = 0.05$. That is to say, our model in general have a very good fit, and there is a significant relationship between **Y** and **x1**, **x2**, **x3**, and **x4**.
+
+$\textbf{T-test:}$
+
+$$H_0: \beta_{i} = 0\quad \quad H_a: \beta_{i}\ne\ 0\quad \quad i = 1,2,3,4.$$
+
+$Pvalue_{t-statistics}$ for $\beta_{1},\beta_{2},\beta_{3}, \beta_{4}$ are $10^-05,0.01272,0.02406,\ and 0.01177$. Therefore, at significant level $\alpha = 0.05$, we can reject the null hypothesis $H_0: \beta_{4} = 0$ and claim that the **death rate** has a strong impact on the response variable. 
+
+### 5.2.5 Causal inference
+
+Generally speaking, our prior question of interest is answered: **There is a significant impact by the coronavirus pandemic on people’s plans on their postsecondary education.**
+
+Furthermore speaking, this result shows that people’s plans for their postsecondary education will be largely affected by the recent coronavirus pandemic’s death rate. In other words, if there’s a high death rate for the coronavirus pandemic, people are very less likely to cancel all plans to take classes this term. This answers our second question of interest.
+
+However, this result does not obey our intuition about this phenomenon, we were expecting that if there’s a high death rate, then people were more likely to cancel all their plans instead of remaining the same.
+
+This finding is not coherent with what we expected before the analysis. We can guess boldly that the reason for this situation is that as time goes by, people are less likely to be terrified by the Covid-19 death rate, which is reflected in data in a negative relationship. *Plot 3* also shows that the relationship between **Y** and **x4** is negatively correlated. This is a really surprising finding and more explanation can be explored.
+
+And many phenomena are even more interesting.
+
+The coefficient of **x1** is $-0.06171$, it is a negative number. And **x1** stands for the non-response rate. It can be inferred that the higher the survey non-response rate it gets, the lower chance that people will change their routine or original plan. In other words, if people take the survey with a higher willingness, that makes sense to say, they have something to report and they may change their plan.
+
+
+$\textbf{Model2:}$
+
+As it's mentioned before, we also want to combine our CDC's vaccination data into account and to see if the vaccination rate will effect people's plan on postsecondary education. Here we add a variable $x_5$ as the vaccination rate. Again, this data is averaged accordingly with the HPS survey cycle. As a matter of fact, the earliest vaccination record is December 13, 2020. It's in the middle of the HPS survey. As a result, we gets a even smaller data with $n = 22$.
+
+Our model2 is :
+
+$$Y_{i} =\beta_0+\beta_{1}X_{1i}+\beta_{2}X_{2i}+\beta_{3}X_{3i}+ \beta_{4}X_{4i}+\beta_{5}X_{5i}\epsilon_{i} \quad \quad i = 1,2...n$$
+
+$\textbf{Explanation of the notation}$
+
+$Y_{i}$ is is the `Rate of all plans to take classes this term have been canceled`. $0\le Y_{i}\le1$. 
+
+$\beta_{0}$ is the intercept term.
+
+$\beta_{1}, \beta_{2}, \beta_{3},\ and\ \beta_{4}$ are the regression coefficients, representing that how much impact does the coronavirus pandemic have on `affected rate`, which is $Y_{i}$.
+
+$X_{1i}$ is the `non-response rate`, it is the rate of the did not response people/total numbers of people.
+
+$X_{2i}$ is the `Cant-afford rate`, it is the rate of the people who were unable to afford further education.
+
+$X_{3i}$ is the `Change of campus`rate. It is the rate of the people who cancel their plan because of the changes to campus life.
+
+$X_{4i}$ represents the averaged `deathrate` in each survey, which is calculated accordingly by `New_deaths/New_cases`.
+
+$X_{5i}$ represents the averaged `vaccination number` in each survey.
+
+$\epsilon_{i}$ is the random error term. 
+
+$n=22$ is the sample size, which is also the total number of surveys from HPS data in Phrase 3, Phrase 3.1, Phrase 3.2, Phrase 3.3. It is smaller than previous sample size because it drops data before vaccination.
+
+$\textbf{Assumption}$: The model errors are assumed to be identically and independently distributed from a normal distribution with zero mean and equal variance. 
+
+$\textbf{Summary of the model results:}$
+```{r}
+#summary(fit2)
+```
+*Table 4: summary of the regression model1*
+
+| **Coefficients:** |            |            |         |            |
+|-------------------|------------|------------|---------|------------|
+|                   |  Estimate  | Std. Error | t value | Pr(>\|t\|) |
+|   _(Intercept)_   |  4.013e-01 |  1.074e-01 |  3.735  |   0.0018   |
+|        _x1_       | -5.576e-02 |  1.988e-02 |  -2.804 |   0.0127   |
+|        _x2_       |  3.486e-01 |  1.742e-01 |  2.001  |   0.0626   |
+|        _x3_       | -8.788e-01 |  4.563e-01 |  -1.926 |   0.0721   |
+|        _x4_       | -1.110e+00 |  7.115e-01 |  -1.560 |   0.1384   |
+|        _x5_       | -3.794e-09 |  1.760e-09 |  -2.156 |   0.0467   |
+
+So our model2 is:
+
+$$Y_{i} =0.4013-0.05576X_{1i}+0.3486X_{2i}-0.8788X_{3i}-1.110X_{4i}-3.794*10^{-9}X_{5i}+\epsilon_{i} \quad \quad i = 1,2...n$$
+
+### 5.2.6 Hypotheses testing 2
+
+$\textbf{F-test:}$
+
+$$H_0: \beta_{1}=\beta_{2}=\beta_{3}=\beta_{4}=\beta_{5}=0\quad \quad H_a: Not\ all\ \beta_{i}\ are\ zero$$
+
+$F-statistics = 19.24 > F(\alpha = 0.05,5,16)$, thus we can reject the null hypothesis and say that not all of the $\beta_i$ are zero at significant level $\alpha = 0.05$. That is to say, our model in general have a very good fit, and there is a significant relationship between **Y** and **x1**, **x2**, **x3**,**x4**, and **x5**.
+
+$\textbf{T-test:}$
+
+$$H_0: \beta_{i} = 0\quad \quad H_a: \beta_{i}\ne\ 0\quad \quad i = 1,2,3,4.$$
+
+$Pvalue_{t-statistics}$ for $\beta_{1},\beta_{2},\beta_{3}, \beta_{4}, \beta_{5}$ are $0.0127,0.0626,0.0721,0.1384 \ and\ 0.0467$. Therefore, at significant level $\alpha = 0.05$, we cannot reject the null hypothesis $H_0: \beta_{4} = 0$ and claim that the **death rate** has a strong impact on the response variable. However, we can reject the null hypothesis $H_0: \beta_{5} = 0$ and claim that there is a significant relationship between the vaccination number and the number of people who will change their plans on postsecondary education.
+
+### 5.2.7 Causal inference 2
+
+This model shows that people's plans on their postsecondary education postsecondary education will be largely effected by the recent the coronavirus pandemic's vaccination number. In other words, **if there's high vaccination rate for the coronavirus pandemic, people are very less likely to cancel all plans to take classes this term.** This is coherent with our common sense.
+
+However, this result also shows that the hypothesis test for $H_0: \beta_{4} = 0$ is not significant. That is to say, people's plan for their postsecondary education is not much effected by the pandemic itself. 
+
+For our primary concern is the relationship between Covid-19 and people's plan for their postsecondary education, in the following discussion, we will only use model 1 as the main model.
+
+# 6. Sensitivity Analysis
+
+## 6.1 Model diagnostics
+
+### 6.1.1 Assumptions diagnostics
+
+*Plot 5*
+
+```{r,echo=FALSE}
+par(mfrow = c(2,2))
+plot(fit1)
+```
+
+*  $\textbf{Independence:}$ From the background of the dataset, it's not likely that the error term would be completely independent, however, nothing wrong can be seen from the diagonal pictures. Therefore, we can temporarily conclude that this assumption is not violated.
+
+*  $\textbf{Normality:}$ The Q-Q plot depicts that the distribution is almost normal with a little bit light tail. The normality assumption is basically satisfied, further examination like log-likelihood transformation testing is necessary.
+ 
+* $\textbf{Constant variance:}$ As shown in the `Residual v.s Fitted values plot`, the residuals spread around the 0, and the extent of the points scattered are approximately equal. The assumption of constant variance is satisfied. Using `ncvTest` to verify our judgement.
+
+*Table 5: Test for constant variance*
+
+```{r}
+#ncvTest(fit1)
+```
+| **Non-constant Variance Score Test** |        |            |
+|--------------------------------------|--------|------------|
+| Chisquare = 0.00518490               | Df = 1 | p = 0.9426 |
+
+The null hypothesis of `ncvTest` states that there is constant variance. Again, at significant level $\alpha = 0.1$, we cannot reject the null hypothesis, therefore. the variance is constant.
+
+Based on those results, we can conclude that the robustness and reliability of this model are fairly enough, and the reliability of conclusion above is strong at significant level $\alpha = 0.1$. 
+
+## 6.1.2 Multicolinearity
+
+As it's mentioned before, there is a risk of multicolinearity within predictors. Let's use VIF and `Farrar-Glauber test` to check the multicolinearity first.
+
+*Table 6：Farrar-Glauber test's statistic and p-value for each predictor*
+
+```{r}
+X = fulldata[,2:5]
+FG_test = pcor(X, method = "pearson")
+vif = t(vif(fit1))
+kable(FG_test$statistic, "html",align=rep('l', 5)) %>%
+  row_spec(1, bold = F)%>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+kable(FG_test$p.value, "html",align=rep('l', 5)) %>%
+  row_spec(1, bold = F)%>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+*Table 7：VIF for each predictor*
+```{r}
+kable(vif, "html",align=rep('l', 5)) %>%
+  row_spec(1, bold = F)%>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+The Farrar-Glauber test points out that **X2** is the root cause of all multicolinearity problem. It is highly correlated with **x1** and **x3**. However, the VIF shows that the explanatory variables have very lower values. What's more, the **X2** is is not our primary concern in terms of the Covid-19. And so far our model presents a very good fit. Therefore, even though there is a possible multicolinearity problem, we still remain the original model.
+
+# 7. Conclusion
+
+The coronavirus pandemic's emergence brought major disruptions to American society. Education is one of them. No matter for elementary and secondary education or postsecondary education, it's highly necessary to study if the coronavirus pandemic's tendency will affect the students' study routine. However, it can be tricky to evaluate the such effect. In this report, using data from [Household Pulse Survey (HPS)](https://www.census.gov/programs-surveys/household-pulse-survey/data.html#phase3.3),[1] and [WHO COVID-19 data](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports), we successfully build a regression model to answer two question:
+
+- The coronavirus pandemic does have a direct effect on people's plans for their postsecondary education in the USA.
+- If there's high death rate for the coronavirus pandemic, people are very less likely to cancel all plans to take classes this term, suggesting people are not actually afraid of studying in a risky environment. We guess that the reason for this situation is that as time goes by, people are less likely to be terrified by the Covid-19 death rate.
+
+The highlight of this report is, by reorganizing and matching the time series data from 3/27/2020 to 2/7/2022, this project managed to transform a time series into a much simpler continue data. 
+
+# 8. caveats of the approach
+
+The biggest challenge of this report comes from the data. The HPS survey data is a very complicated survey table with up to 40 question proportions and results. However, it's of great difficulty to transform this survey table into something that we can analyze with regular data size and variables.
+
+However, this approach is along with risks. The most important limit for our models is the data size. Due to ti the fact that there are only 42 times surveys, each survey cycle lasts for 12 days. We indeed compressed data and might lose a lot of information by doing so. Again, this is because of the limit of the data itself, and there's not much we can do.
+
+The regression model in this report seems to be quite simple and easy. However, this is the best result we can get due to the limitation of the dataset. On the one hand, if we want to study the Covid-19's impact on education in the USA, the HPS survey data is the most reliable and authorized dataset, and it's actually the only dataset that I found very meaningful, after all, there's no direct index to reflect this impact. Even students' grades are unreliable due to the fact that online study is different from the study on campus, and some schools chose to study online while some schools didn't. 
+
+At the very beginning, I tried to compare students' performance before and after Covid-19 to measure its impact. However, I faced many difficulties. First, there was not much to be compared, the information and datasets are limited. Second, the datasets present messy information. Students' performance seemed to have no relationship with Covid-19, which for me as a student, that's not true.
+
+To conclude, even though this report is quite simple in the format with a surprising result, this is the best result I can get. I tried to explain the negative relationship between the death rate and the response variable, but a more convincing theory can be explored afterward.
+
+# Referrence 
+
+[1] The speed of the survey development and the pace of the data collection efforts led to policies and procedures for the experimental HPS that were not always consistent with traditional federal survey operations. For example, the timeline for the surveys meant that opportunities to follow up with nonrespondents were very limited. This has led to response rates of 1 to 10 percent, which are much lower than the typical target response rate set in most federal surveys. While the responses have been statistically adjusted so that they represent the nation and states in terms of geographic distribution, sex, race/ethnicity, age, and educational attainment, the impact of survey bias has not been fully explored.
+
+[2] https://nces.ed.gov/programs/coe/indicator/tpb 
+
+[3] Kunal Chaturvedi, Dinesh Kumar Vishwakarma, Nidhi Singh,
+COVID-19 and its impact on education, social life and mental health of students: A survey,Children and Youth Services Review,Volume 121,2021105866,ISSN 0190-7409,https://doi.org/10.1016/j.childyouth.2020.105866.(https://www.sciencedirect.com/science/article/pii/S019074092032288X).
